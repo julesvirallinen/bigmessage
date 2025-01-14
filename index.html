@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JulesMessage</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    #displayText {
+      text-align: center;
+      word-wrap: break-word;
+      margin-bottom: 20px;
+      width: 90%;
+      height: auto;
+      font-family: HeavyData Nerd Font, monospace;
+    }
+    #inputContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    textarea {
+      font-size: 1.5rem;
+      padding: 10px;
+      width: 300px;
+      height: 100px;
+      margin-bottom: 10px;
+      resize: none;
+    }
+    button {
+      font-size: 1.5rem;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="displayText">Loading...</div>
+  
+  <div id="inputContainer" style="display: none;">
+    <textarea id="textInput" placeholder="Enter text here"></textarea>
+    <button onclick="updateText()">Set Text</button>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const text = params.get('text');
+
+    const displayText = document.getElementById('displayText');
+    const inputContainer = document.getElementById('inputContainer');
+
+    if (text) {
+      displayText.textContent = text;
+      adjustFontSize();
+    } else {
+      displayText.textContent = 'No text provided';
+      inputContainer.style.display = 'flex';
+    }
+
+    function updateText() {
+      const newText = document.getElementById('textInput').value;
+      if (newText.trim() !== '') {
+        displayText.textContent = newText;
+        inputContainer.style.display = 'none';
+        adjustFontSize();
+      }
+    }
+
+    function adjustFontSize() {
+      const container = displayText.parentNode;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      let fontSize = 10000; // Start with a large font size
+
+      displayText.style.fontSize = fontSize + 'px';
+
+      // Decrease font size until the text fits within the container
+      while (
+        displayText.scrollWidth > containerWidth || 
+        displayText.scrollHeight > containerHeight
+      ) {
+        fontSize -= 2;
+        displayText.style.fontSize = fontSize + 'px';
+      }
+    }
+
+    // Adjust font size on window resize
+    window.addEventListener('resize', adjustFontSize);
+  </script>
+</body>
+</html>
