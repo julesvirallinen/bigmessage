@@ -11,6 +11,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      overflow: hidden;
       margin: 0;
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
@@ -18,13 +19,13 @@
     #displayText {
       text-align: center;
       word-wrap: break-word;
-      margin-bottom: 20px;
-      width: 90%;
-      height: auto;
+      width: 100%;
+      height: 100vh;
       font-family: HeavyData Nerd Font, monospace;
     }
     #inputContainer {
       display: flex;
+      
       flex-direction: column;
       align-items: center;
     }
@@ -41,37 +42,324 @@
       padding: 10px 20px;
       cursor: pointer;
     }
+    #styleOptions {
+      display: inline-flex;
+      
+      gap: 20px;
+      margin-bottom: 20px;
+      max-width: 800px;
+    }
+    
+    .styleChoice {
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .stylePreview {
+      text-align: center;
+      padding: 20px;
+      margin-top: 5px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
   <div id="displayText">Loading...</div>
   
   <div id="inputContainer" style="display: none;">
+    <div id="styleOptions"></div>
     <textarea id="textInput" placeholder="Enter text here"></textarea>
     <button onclick="updateText()">Set Text</button>
   </div>
 
   <script>
+    // First, define the styles
+    const STYLE_PRESETS = {
+        default: {
+            name: "Default",
+            styles: {
+                fontFamily: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                border: '1px solid #666'
+            }
+        },
+        retro: {
+            name: "Retro",
+            styles: {
+                fontFamily: 'Courier New, monospace',
+                backgroundColor: '#f4f1c1',
+                color: '#000000',
+                border: '2px solid #8b8b83'
+            }
+        },
+        modern: {
+            name: "Modern",
+            styles: {
+                fontFamily: 'Arial, sans-serif',
+                backgroundColor: '#ffffff',
+                color: '#333333',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px'
+            }
+        },
+        playful: {
+            name: "Playful",
+            styles: {
+                fontFamily: 'Comic Sans MS, cursive',
+                backgroundColor: '#fff0f5',
+                color: '#ff1493',
+                border: '3px dashed #ff69b4',
+                borderRadius: '12px'
+            }
+        },
+        neon: {
+            name: "Neon",
+            styles: {
+                fontFamily: 'Orbitron, sans-serif',
+                backgroundColor: '#000000',
+                color: '#00ff00',
+                border: '2px solid #00ff00',
+                textShadow: '0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00',
+                borderRadius: '4px'
+            }
+        },
+        vintage: {
+            name: "Vintage",
+            styles: {
+                fontFamily: 'Georgia, serif',
+                backgroundColor: '#f4e4bc',
+                color: '#8b4513',
+                border: '3px double #8b4513',
+                textShadow: '1px 1px 0 #d2b48c'
+            }
+        },
+        cyberpunk: {
+            name: "Cyberpunk",
+            styles: {
+                fontFamily: '"Press Start 2P", cursive',
+                backgroundColor: '#ff00ff',
+                color: '#00ffff',
+                border: '3px solid #00ffff',
+                textShadow: '2px 2px 0 #ff00ff, -2px -2px 0 #00ffff',
+                borderRadius: '0'
+            }
+        },
+
+    };
+
+    // Then initialize everything
     const params = new URLSearchParams(window.location.search);
-    const text = params.get('text');
+    const encodedText = params.get('text');
+    const isEditMode = params.get('mode') === 'edit';
+    const urlStyle = params.get('style') || 'default';
 
     const displayText = document.getElementById('displayText');
     const inputContainer = document.getElementById('inputContainer');
 
-    if (text) {
-      displayText.textContent = text;
-      adjustFontSize();
+    // Show input container in edit mode or when no text
+    if (!encodedText || isEditMode) {
+        displayText.style.display = 'none';
+        inputContainer.style.display = 'flex';
+        generateStylePreviews();
+        
+        // If we have text, populate the input field and select the style
+        if (encodedText) {
+            try {
+                const decodedText = atob(encodedText);
+                document.getElementById('textInput').value = decodedText;
+                updatePreviews(decodedText);
+            } catch (e) {
+                console.error('Invalid base64 text');
+            }
+        }
     } else {
-      displayText.textContent = 'No text provided';
-      inputContainer.style.display = 'flex';
+        // Show mode - display the text
+        try {
+            const decodedText = atob(encodedText);
+            displayText.textContent = decodedText;
+            displayText.style.display = 'block';
+            inputContainer.style.display = 'none';
+            
+            // Apply the style from URL parameter
+            applyStyle(displayText, urlStyle);
+            
+            // Add an edit button
+            const editButton = document.createElement('button');
+            editButton.textContent = 'X';
+            editButton.style.position = 'fixed';
+            editButton.style.bottom = '20px';
+            editButton.style.right = '20px';
+            editButton.style.backgroundColor = "transparent"
+            editButton.style.border = '1px solid transparent';
+            editButton.style.borderRadius = '4px';
+            editButton.onclick = () => {
+                window.location.href = `${window.location.pathname}?text=${encodedText}&style=${urlStyle}&mode=edit`;
+            };
+            document.body.appendChild(editButton);
+            
+            adjustFontSize();
+        } catch (e) {
+            console.error('Invalid base64 text');
+            displayText.textContent = 'Error: Invalid text format';
+        }
+    }
+
+    function updatePreviews(text) {
+        const previews = document.querySelectorAll('.stylePreview');
+        previews.forEach(preview => {
+            preview.textContent = text || 'Preview: Hello World!';
+        });
+    }
+
+    function generateStylePreviews() {
+        const container = document.getElementById('inputContainer');
+        
+        // Remove any existing style options
+        const existingOptions = document.getElementById('styleOptions');
+        if (existingOptions) {
+            existingOptions.remove();
+        }
+        
+        const styleOptions = document.createElement('div');
+        styleOptions.id = 'styleOptions';
+        
+        Object.entries(STYLE_PRESETS).forEach(([key, preset]) => {
+            const styleChoice = document.createElement('div');
+            styleChoice.className = 'styleChoice';
+            
+            const labelContainer = document.createElement('div');
+            labelContainer.className = 'radio-label';
+            
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.id = `${key}Style`;
+            radio.name = 'style';
+            radio.value = key;
+            radio.onchange = applyPreset;
+            if (key === 'default') radio.checked = true;
+            
+            const label = document.createElement('label');
+            label.htmlFor = `${key}Style`;
+            label.textContent = preset.name;
+            
+            labelContainer.appendChild(radio);
+            labelContainer.appendChild(label);
+            
+            const preview = document.createElement('div');
+            preview.className = 'stylePreview';
+            preview.textContent = 'Preview: Hello World!';
+            Object.assign(preview.style, preset.styles);
+            
+            styleChoice.appendChild(labelContainer);
+            styleChoice.appendChild(preview);
+            
+            // Set the initial selected style from URL
+            if (key === urlStyle) radio.checked = true;
+            
+            styleOptions.appendChild(styleChoice);
+        });
+        
+        // Insert before textarea
+        const textarea = document.getElementById('textInput');
+        container.insertBefore(styleOptions, textarea);
+        
+        // Add input event listener to textarea
+        textarea.addEventListener('input', (e) => {
+            updatePreviews(e.target.value);
+        });
+    }
+
+    // Update applyStyle to use the new STYLE_PRESETS
+    function applyStyle(element, preset, isInput = false) {
+        const selectedPreset = STYLE_PRESETS[preset] || STYLE_PRESETS.default;
+        Object.assign(element.style, selectedPreset.styles);
+    }
+
+    // Add styles to the page
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+        #inputContainer {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #inputContainer #styleOptions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        #inputContainer .styleChoice {
+            width: auto !important;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 0;
+        }
+        
+        #inputContainer .stylePreview {
+            text-align: center;
+            padding: 20px;
+            margin-top: 5px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word;
+            box-sizing: border-box;
+        }
+
+        #inputContainer .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #inputContainer #textInput {
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+    `;
+    document.head.appendChild(styleSheet);
+
+    // Initialize on page load
+    window.onload = function() {
+        generateStylePreviews();
+        // ... rest of your existing onload code ...
+    };
+
+    function applyPreset() {
+      const preset = document.getElementById('stylePreset').value;
+      applyStyle(document.getElementById('textInput'), preset, true);
+      applyStyle(document.getElementById('stylePreview'), preset, true);
     }
 
     function updateText() {
       const newText = document.getElementById('textInput').value;
+      const selectedStyle = document.querySelector('input[name="style"]:checked').value;
+      
       if (newText.trim() !== '') {
-        displayText.textContent = newText;
-        inputContainer.style.display = 'none';
-        adjustFontSize();
+        const encodedText = btoa(newText);
+        // Redirect to show mode with the new text
+        window.location.href = `${window.location.pathname}?text=${encodedText}&style=${selectedStyle}`;
       }
     }
 
