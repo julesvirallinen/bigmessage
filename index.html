@@ -30,12 +30,25 @@
       align-items: center;
     }
     textarea {
-      font-size: 1.5rem;
-      padding: 10px;
-      width: 300px;
-      height: 100px;
+      font-size: 2rem;
+      line-height: 3rem;
+      padding: 0;
+      padding: 20px;
+      width: 500px;
+      height: 200px;
       margin-bottom: 10px;
       resize: none;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      word-wrap: break-word;
+      font-family: inherit;
+      padding-left: 10px;
+      padding-right: 10px;
     }
     button {
       font-size: 1.5rem;
@@ -51,7 +64,7 @@
     }
     
     .styleChoice {
-      padding: 15px;
+      padding: 10px;
       border: 1px solid #ccc;
       border-radius: 4px;
       display: flex;
@@ -61,7 +74,7 @@
     
     .stylePreview {
       text-align: center;
-      padding: 20px;
+      padding: 10px;
       margin-top: 5px;
       min-height: 60px;
       display: flex;
@@ -80,8 +93,8 @@
   <div id="displayText">Loading...</div>
   
   <div id="inputContainer" style="display: none;">
-    <div id="styleOptions"></div>
     <textarea id="textInput" placeholder="Enter text here"></textarea>
+    <div id="styleOptions"></div>
     <button onclick="updateText()">Set Text</button>
   </div>
 
@@ -133,7 +146,7 @@
                 backgroundColor: '#000000',
                 color: '#00ff00',
                 border: '2px solid #00ff00',
-                textShadow: '0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00',
+                textShadow: '0 0 0.05em #00ff00, 0 0 0.1em #00ff00',
                 borderRadius: '4px'
             }
         },
@@ -144,7 +157,7 @@
                 backgroundColor: '#f4e4bc',
                 color: '#8b4513',
                 border: '3px double #8b4513',
-                textShadow: '1px 1px 0 #d2b48c'
+                textShadow: '0.05em 0.05em 0 #d2b48c'
             }
         },
         cyberpunk: {
@@ -154,7 +167,7 @@
                 backgroundColor: '#ff00ff',
                 color: '#00ffff',
                 border: '3px solid #00ffff',
-                textShadow: '2px 2px 0 #ff00ff, -2px -2px 0 #00ffff',
+                textShadow: ' -0.01em -0.01em 0 #ffff00',
                 borderRadius: '0'
             }
         },
@@ -203,9 +216,12 @@
             editButton.style.position = 'fixed';
             editButton.style.bottom = '20px';
             editButton.style.right = '20px';
-            editButton.style.backgroundColor = "transparent"
+            editButton.style.backgroundColor = "transparent";
             editButton.style.border = '1px solid transparent';
             editButton.style.borderRadius = '4px';
+            // Set text color to opposite of background color
+            const bgColor = STYLE_PRESETS[urlStyle].styles.backgroundColor;
+            editButton.style.color = bgColor === '#000000' ? '#ffffff' : '#000000';
             editButton.onclick = () => {
                 window.location.href = `${window.location.pathname}?text=${encodedText}&style=${urlStyle}&mode=edit`;
             };
@@ -227,6 +243,7 @@
 
     function generateStylePreviews() {
         const container = document.getElementById('inputContainer');
+        const textarea = document.getElementById('textInput');
         
         // Remove any existing style options
         const existingOptions = document.getElementById('styleOptions');
@@ -249,8 +266,20 @@
             radio.id = `${key}Style`;
             radio.name = 'style';
             radio.value = key;
-            radio.onchange = applyPreset;
-            if (key === 'default') radio.checked = true;
+            radio.onchange = () => {
+                applyStyle(textarea, key); // Apply style to textarea when radio changes
+                applyPreset();
+                const newText = document.getElementById('textInput').value;
+                if (newText.trim() !== '') {
+                    const encodedText = btoa(newText);
+                    window.location.href = `${window.location.pathname}?text=${encodedText}&style=${key}&mode=edit`;
+                }
+            };
+            // Set the initial selected style from URL
+            if (key === urlStyle) {
+                radio.checked = true;
+                applyStyle(textarea, key); // Apply style to textarea initially
+            }
             
             const label = document.createElement('label');
             label.htmlFor = `${key}Style`;
@@ -267,15 +296,11 @@
             styleChoice.appendChild(labelContainer);
             styleChoice.appendChild(preview);
             
-            // Set the initial selected style from URL
-            if (key === urlStyle) radio.checked = true;
-            
             styleOptions.appendChild(styleChoice);
         });
         
-        // Insert before textarea
-        const textarea = document.getElementById('textInput');
-        container.insertBefore(styleOptions, textarea);
+        // Insert after textarea
+        textarea.after(styleOptions);
         
         // Add input event listener to textarea
         textarea.addEventListener('input', (e) => {
@@ -286,6 +311,16 @@
     // Update applyStyle to use the new STYLE_PRESETS
     function applyStyle(element, preset, isInput = false) {
         const selectedPreset = STYLE_PRESETS[preset] || STYLE_PRESETS.default;
+        
+        // Reset all possible style properties first
+        element.style.fontFamily = '';
+        element.style.backgroundColor = '';
+        element.style.color = '';
+        element.style.border = '';
+        element.style.borderRadius = '';
+        element.style.textShadow = '';
+        
+        // Then apply the new styles
         Object.assign(element.style, selectedPreset.styles);
     }
 
@@ -347,7 +382,7 @@
     };
 
     function applyPreset() {
-      const preset = document.getElementById('stylePreset').value;
+      const preset = document.querySelector('input[name="style"]:checked').value;
       applyStyle(document.getElementById('textInput'), preset, true);
       applyStyle(document.getElementById('stylePreview'), preset, true);
     }
