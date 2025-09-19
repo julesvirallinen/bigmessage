@@ -10,11 +10,15 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        height: 100vh;
-        overflow: hidden;
+        min-height: 100vh;
         margin: 0;
         background-color: #f0f0f0;
         font-family: Arial, sans-serif;
+      }
+
+      body.display-mode {
+        height: 100vh;
+        overflow: hidden;
       }
       #displayText {
         text-align: center;
@@ -23,6 +27,8 @@
         width: 100%;
         height: 100vh;
         font-family: HeavyData Nerd Font, monospace;
+        padding: 40px;
+        box-sizing: border-box;
       }
       #inputContainer {
         display: flex;
@@ -216,31 +222,16 @@
             border: "1px solid #666",
           },
         },
-        ankh: {
-          name: "Ankh",
-          styles: {
-            fontFamily: "HeavyData Nerd Font, sans-serif",
-            backgroundColor: "#1a1c34",
-            color: "#f1f1f1",
-            border: "1px solid #666",
-          },
-        },
-        neo2030: {
-          name: "Neo 2030",
-          styles: {
-            fontFamily:
-              '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            backgroundColor: "#1a1c34",
-            color: "#00d4ff",
-            textShadow:
-              "0 0 30px rgba(0, 212, 255, 0.8), 0 0 60px rgba(255, 0, 255, 0.4), 0 0 90px rgba(0, 255, 136, 0.3)",
-            filter: "drop-shadow(0 4px 20px rgba(0, 212, 255, 0.6))",
-            border: "2px solid rgba(0, 212, 255, 0.4)",
-            borderRadius: "8px",
-            margin: "100px",
-          },
-        },
       };
+
+      // UTF-8 safe encoding functions
+      function safeEncode(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+      }
+
+      function safeDecode(str) {
+        return decodeURIComponent(escape(atob(str)));
+      }
 
       // Then initialize everything
       const params = new URLSearchParams(window.location.search);
@@ -253,6 +244,7 @@
 
       // Show input container in edit mode or when no text
       if (!encodedText || isEditMode) {
+        document.body.classList.remove("display-mode");
         displayText.style.display = "none";
         inputContainer.style.display = "flex";
         generateStylePreviews();
@@ -260,7 +252,7 @@
         // If we have text, populate the input field and select the style
         if (encodedText) {
           try {
-            const decodedText = atob(encodedText);
+            const decodedText = safeDecode(encodedText);
             document.getElementById("textInput").value = decodedText;
             updatePreviews(decodedText);
           } catch (e) {
@@ -269,8 +261,9 @@
         }
       } else {
         // Show mode - display the text
+        document.body.classList.add("display-mode");
         try {
-          const decodedText = atob(encodedText);
+          const decodedText = safeDecode(encodedText);
           displayText.textContent = decodedText;
           displayText.style.display = "block";
           inputContainer.style.display = "none";
@@ -340,7 +333,7 @@
             applyPreset();
             const newText = document.getElementById("textInput").value;
             if (newText.trim() !== "") {
-              const encodedText = btoa(newText);
+              const encodedText = safeEncode(newText);
               window.location.href = `${window.location.pathname}?text=${encodedText}&style=${key}&mode=edit`;
             }
           };
@@ -471,12 +464,15 @@
 
       function updateText() {
         const newText = document.getElementById("textInput").value;
-        const selectedStyle = document.querySelector(
+        const selectedStyleEl = document.querySelector(
           'input[name="style"]:checked'
-        ).value;
+        );
+        const selectedStyle = selectedStyleEl
+          ? selectedStyleEl.value
+          : "default";
 
         if (newText.trim() !== "") {
-          const encodedText = btoa(newText);
+          const encodedText = safeEncode(newText);
           // Redirect to show mode with the new text
           window.location.href = `${window.location.pathname}?text=${encodedText}&style=${selectedStyle}`;
         }
